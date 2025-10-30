@@ -83,9 +83,6 @@
             text-align: center;
         }
 
-        /* 3. الإعدادات الجمالية لـ Tailwind */
-        /* تم إضافة فئة "Tajawal" إلى العناصر الرئيسية في HTML */
-
     </style>
 </head>
 <body class="p-4 md:p-8 bg-gray-100 min-h-screen">
@@ -304,42 +301,53 @@
      * Initializes Firebase and sets up the authentication listener.
      */
     async function setupFirebase() {
-        if (Object.keys(firebaseConfig).length === 0) {
-            console.error("Firebase configuration is missing. Cannot initialize Firestore.");
-            showMessage('خطأ: لا يمكن الاتصال بقاعدة البيانات. إعدادات Firebase مفقودة.', 'error');
+        // --- 1. Enhanced Config Check ---
+        if (!firebaseConfig || !firebaseConfig.apiKey) {
+            console.error("Firebase configuration is critically missing. Cannot initialize Firestore.");
+            showMessage('خطأ: فشلت عملية تهيئة Firebase. إعدادات الاتصال (apiKey) مفقودة أو غير صالحة.', 'error');
             return;
         }
 
-        app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
-        setLogLevel('Debug'); // Enable debug logging for Firestore
+        // --- 2. Initialize and Authenticate ---
+        try {
+            // Show loading state while connecting
+            showMessage('جاري محاولة الاتصال بخدمات Firebase...', 'warning');
 
-        // Authentication and Data Loading
-        onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                userId = user.uid;
-            } else {
-                try {
-                    if (initialAuthToken) {
-                        const credentials = await signInWithCustomToken(auth, initialAuthToken);
-                        userId = credentials.user.uid;
-                    } else {
-                        const credentials = await signInAnonymously(auth);
-                        userId = credentials.user.uid;
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            setLogLevel('Debug'); // Enable debug logging for Firestore
+
+            // Authentication and Data Loading
+            onAuthStateChanged(auth, async (user) => {
+                if (user) {
+                    userId = user.uid;
+                } else {
+                    try {
+                        if (initialAuthToken) {
+                            const credentials = await signInWithCustomToken(auth, initialAuthToken);
+                            userId = credentials.user.uid;
+                        } else {
+                            const credentials = await signInAnonymously(auth);
+                            userId = credentials.user.uid;
+                        }
+                    } catch (error) {
+                        console.error("Firebase Auth Error:", error);
+                        showMessage('خطأ في المصادقة: ' + error.message, 'error');
+                        userId = crypto.randomUUID(); // Fallback ID
                     }
-                } catch (error) {
-                    console.error("Firebase Auth Error:", error);
-                    showMessage('خطأ في المصادقة: ' + error.message, 'error');
-                    userId = crypto.randomUUID(); // Fallback ID
                 }
-            }
-            isAuthReady = true;
-            console.log("Firebase initialized. User ID:", userId);
+                isAuthReady = true;
+                console.log("Firebase initialized. User ID:", userId);
+                showMessage('تم الاتصال بنجاح. بيانات الفريق جاهزة.', 'success');
 
-            // Once authenticated, start real-time data listeners
-            loadData();
-        });
+                // Once authenticated, start real-time data listeners
+                loadData();
+            });
+        } catch (error) {
+            console.error("Critical Firebase Initialization Error:", error);
+            showMessage(`خطأ فادح في تهيئة Firebase: ${error.message}`, 'error');
+        }
     }
 
     /**
@@ -353,8 +361,14 @@
             players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             // Sort players: High-level players first (high rating, then high goals)
             players.sort((a, b) => {
-                if (b.rating !== a.rating) return b.rating - a.rating;
-                return b.goals - a.goals;
+                // Ensure default values if data is missing
+                const ratingA = a.rating || 5;
+                const ratingB = b.rating || 5;
+                const goalsA = a.goals || 0;
+                const goalsB = b.goals || 0;
+
+                if (ratingB !== ratingA) return ratingB - ratingA;
+                return goalsB - goalsA;
             });
             console.log("Players updated from Firestore:", players);
             renderTeam();
@@ -393,7 +407,7 @@
      * Handles adding a new player to the Firestore database.
      */
     async function addPlayer(name) {
-        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات. (DB Not Ready)', 'error');
         if (!name.trim()) return showMessage('يرجى إدخال اسم اللاعب.', 'error');
         
         try {
@@ -417,7 +431,7 @@
      * Handles removing a player from the Firestore database.
      */
     async function removePlayer(playerId) {
-        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات. (DB Not Ready)', 'error');
         if (!playerId) return; 
 
         // NOTE: A proper UI confirmation modal should be implemented here before calling this function.
@@ -436,7 +450,7 @@
      * Creates a new match document in Firestore.
      */
     async function startMatch(opponent, date) {
-        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات. (DB Not Ready)', 'error');
         if (activeMatchId) return showMessage('هناك مباراة نشطة بالفعل. يجب إنهاؤها أولاً.', 'error');
 
         try {
@@ -467,7 +481,7 @@
      * Updates the match document and player aggregate stats using a Firestore transaction.
      */
     async function endMatch(matchId, form) {
-        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات. (DB Not Ready)', 'error');
         const match = matches.find(m => m.id === matchId);
         if (!match) return showMessage('المباراة غير موجودة.', 'error');
         if (match.ended) return showMessage('هذه المباراة منتهية بالفعل. يمكنك حذفها وإعادة إضافتها لتحديث الإحصائيات.', 'error');
@@ -483,7 +497,8 @@
         for (const player of players) {
             const goals = parseInt(form.elements[`goals-${player.id}`]?.value || 0, 10);
             const assists = parseInt(form.elements[`assists-${player.id}`]?.value || 0, 10);
-            const rating = parseFloat(form.elements[`rating-${player.id}`]?.value);
+            const ratingInput = form.elements[`rating-${player.id}`];
+            const rating = parseFloat(ratingInput?.value);
             
             if (isNaN(rating) || rating < 1 || rating > 10) {
                  showMessage(`خطأ في تقييم اللاعب ${player.name}. يجب أن يكون بين 1 و 10.`, 'error');
@@ -525,14 +540,14 @@
                         
                         // New Aggregate Calculation
                         const currentMatches = player.matchesPlayed || 0;
-                        const totalRatingSum = (player.rating * currentMatches) + stats.rating;
+                        const totalRatingSum = ((player.rating || 5) * currentMatches) + stats.rating;
                         const totalMatches = currentMatches + 1;
                         
                         transaction.update(playerRef, {
                             goals: (player.goals || 0) + stats.goals,
                             assists: (player.assists || 0) + stats.assists,
                             matchesPlayed: totalMatches,
-                            rating: totalRatingSum / totalMatches, // New average rating
+                            rating: totalMatches > 0 ? totalRatingSum / totalMatches : 5, // New average rating
                         });
                     }
                 }
@@ -552,7 +567,7 @@
      * Deletes a match and reverses player aggregate stats if the match was ended.
      */
     async function deleteMatch(matchId) {
-        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات. (DB Not Ready)', 'error');
         const match = matches.find(m => m.id === matchId);
         if (!match) return;
 
@@ -574,15 +589,18 @@
                         if (playerDoc.exists()) {
                             const player = playerDoc.data();
                             
-                            const oldRatingSum = (player.rating * player.matchesPlayed) || 0;
-                            const newMatchesCount = (player.matchesPlayed || 0) - 1;
+                            const playerRating = player.rating || 5;
+                            const playerMatchesPlayed = player.matchesPlayed || 0;
+                            
+                            const oldRatingSum = playerRating * playerMatchesPlayed;
+                            const newMatchesCount = playerMatchesPlayed - 1;
                             
                             // New aggregate sum after removing this match's rating
-                            const newRatingSum = oldRatingSum - stats.rating;
+                            const newRatingSum = oldRatingSum - (stats.rating || 5); // Use 5 as default if rating is missing
                             
                             transaction.update(playerRef, {
-                                goals: Math.max(0, (player.goals || 0) - stats.goals), 
-                                assists: Math.max(0, (player.assists || 0) - stats.assists),
+                                goals: Math.max(0, (player.goals || 0) - (stats.goals || 0)), 
+                                assists: Math.max(0, (player.assists || 0) - (stats.assists || 0)),
                                 matchesPlayed: newMatchesCount,
                                 // New average: handle division by zero if it was the only match
                                 rating: newMatchesCount > 0 ? (newRatingSum / newMatchesCount) : 5, 
@@ -622,16 +640,19 @@
         }
 
         players.forEach((player, index) => {
+            const playerRating = player.rating || 5;
+            const playerMatchesPlayed = player.matchesPlayed || 0;
+
             // Player List Card
             const listItem = document.createElement('div');
             listItem.className = 'flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border border-gray-200';
             listItem.innerHTML = `
                 <div class="flex items-center">
                     <span class="text-gray-900 font-semibold text-right">${player.name}</span>
-                    <span class="text-xs text-gray-500 mr-2">(${player.matchesPlayed || 0} مباريات)</span>
+                    <span class="text-xs text-gray-500 mr-2">(${playerMatchesPlayed} مباريات)</span>
                 </div>
                 <div class="flex items-center gap-2">
-                    <span class="text-yellow-500 font-bold ml-2">${(player.rating || 5).toFixed(1)} <i class="fa-solid fa-star"></i></span>
+                    <span class="text-yellow-500 font-bold ml-2">${playerRating.toFixed(1)} <i class="fa-solid fa-star"></i></span>
                     <button onclick="removePlayerHandler('${player.id}', '${player.name}')" class="text-red-500 hover:text-red-700 p-1 rounded-full transition duration-150" title="حذف اللاعب">
                         <i class="fa-solid fa-user-minus"></i>
                     </button>
@@ -642,12 +663,13 @@
             // Ranking Table Row
             const rankRow = document.createElement('tr');
             rankRow.className = 'border-b hover:bg-gray-50';
-            const totalPoints = (player.rating * (player.matchesPlayed || 0)) + (player.goals * 3) + (player.assists * 2);
+            // Simple scoring for ranking: Rating * Matches + Goals*3 + Assists*2
+            const totalPoints = (playerRating * playerMatchesPlayed) + (player.goals * 3) + (player.assists * 2);
             rankRow.innerHTML = `
                 <td class="p-2 text-center text-lg font-bold text-indigo-700">${index + 1}</td>
                 <td class="p-2 text-right font-semibold">${player.name}</td>
-                <td class="p-2 text-center text-yellow-600 font-medium">${(player.rating || 5).toFixed(1)}</td>
-                <td class="p-2 text-center">${player.matchesPlayed || 0}</td>
+                <td class="p-2 text-center text-yellow-600 font-medium">${playerRating.toFixed(1)}</td>
+                <td class="p-2 text-center">${playerMatchesPlayed}</td>
                 <td class="p-2 text-center text-green-600 font-medium">${player.goals}</td>
                 <td class="p-2 text-center text-blue-600 font-medium">${player.assists}</td>
                 <td class="p-2 text-center font-bold text-gray-800">${totalPoints.toFixed(0)}</td>
@@ -674,8 +696,24 @@
 
         matches.forEach(match => {
             const listItem = document.createElement('div');
-            const statusClass = match.ended ? (match.goals > match.opponentGoals ? 'bg-green-100 border-green-400' : match.goals < match.opponentGoals ? 'bg-red-100 border-red-400' : 'bg-yellow-100 border-yellow-400') : 'bg-gray-100 border-gray-400';
-            const statusText = match.ended ? `النتيجة: ${match.goals} - ${match.opponentGoals}` : 'نشطة';
+            let statusClass;
+            let statusText;
+
+            if (match.ended) {
+                if (match.goals > match.opponentGoals) {
+                    statusClass = 'bg-green-100 border-green-400';
+                    statusText = `فوز: ${match.goals} - ${match.opponentGoals}`;
+                } else if (match.goals < match.opponentGoals) {
+                    statusClass = 'bg-red-100 border-red-400';
+                    statusText = `هزيمة: ${match.goals} - ${match.opponentGoals}`;
+                } else {
+                    statusClass = 'bg-yellow-100 border-yellow-400';
+                    statusText = `تعادل: ${match.goals} - ${match.opponentGoals}`;
+                }
+            } else {
+                statusClass = 'bg-gray-100 border-gray-400';
+                statusText = 'نشطة';
+            }
 
             listItem.className = `p-3 border-r-4 rounded-lg shadow-sm ${statusClass} flex items-center justify-between transition duration-150 cursor-pointer hover:shadow-md`;
             listItem.onclick = () => activateMatch(match.id);
@@ -781,7 +819,7 @@
 
     window.removePlayerHandler = (playerId, playerName) => {
         // Simple confirmation using the message box as a placeholder for a proper modal
-        if (window.confirm(`هل أنت متأكد من حذف اللاعب ${playerName}؟ سيتم حذف جميع إحصائياته في المباريات المستقبلية.`)) {
+        if (window.confirm(`هل أنت متأكد من حذف اللاعب ${playerName}؟ سيتم حذف جميع إحصائياته في المباريات السابقة وسيتم إزالته من القائمة.`)) {
             removePlayer(playerId);
         }
     };
