@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فريق النخبة</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+    <!-- تم تغيير رابط Font Awesome ليصبح أكثر دقة -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJc5vR4XU0Lq5J+Lp4A7y0Xq/uXkX9F+2fK7j9yF+A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+
+    <style>
+        /* 2. تصميم الموقع: الألوان والخطوط الأساسية */
+        :root {
+            --color-primary: #1d4ed8; /* أزرق داكن جديد (indigo-700) */
+            --color-success: #10b981;
+            --color-danger: #ef4444;
+            --color-warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Tajawal', sans-serif;
+            background-color: #f3f4f6; /* رمادي فاتح للخلفية */
+        }
+
+        .card {
+            background-color: white;
+            border-radius: 1rem; /* حواف مستديرة */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #1e40af; /* أغمق قليلاً عند التحويم */
+        }
+
+        .input-field {
+            border: 1px solid #d1d5db;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            border-color: var(--color-primary);
+            outline: none;
+        }
+        
+        /* Select2 RTL Fix */
+        .select2-container--default .select2-selection--single {
+            text-align: right;
+            border-color: #d1d5db !important;
+            height: 42px !important;
+            display: flex;
+            align-items: center;
+            padding-right: 1rem;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__arrow {
+            left: 0.5rem;
+            right: auto;
+        }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            color: #4b5563;
+        }
+
+        /* تنسيق جدول إحصائيات اللاعبين */
+        .table-player-stats th, .table-player-stats td {
+            text-align: center;
+        }
+
+        /* 3. الإعدادات الجمالية لـ Tailwind */
+        /* تم إضافة فئة "Tajawal" إلى العناصر الرئيسية في HTML */
+
+    </style>
+</head>
+<body class="p-4 md:p-8 bg-gray-100 min-h-screen">
+    
+    <!-- Message Box (Replaces alert() and confirm()) -->
+    <div id="message-box" class="fixed top-4 right-4 z-50 transition-transform duration-300 transform translate-x-full">
+        <div id="message-content" class="p-4 rounded-lg shadow-xl max-w-sm flex items-center justify-between" role="alert">
+            <span id="message-text" class="text-right"></span>
+            <button onclick="document.getElementById('message-box').classList.add('translate-x-full')" class="mr-4 text-xl font-bold">&times;</button>
+        </div>
+    </div>
+    
+    <header class="text-center mb-10">
+        <h1 class="text-5xl font-extrabold text-gray-800 flex items-center justify-center">
+            <i class="fa-solid fa-shield-halved text-indigo-700 ml-3"></i> 
+            فريق النخبة
+        </h1>
+        <p class="text-gray-500 mt-2">إدارة اللاعبين والمباريات بكفاءة</p>
+    </header>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- 1. إدارة الفريق (اللاعبون) -->
+        <section class="lg:col-span-1 card p-6">
+            <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-700">قائمة اللاعبين</h2>
+            
+            <form id="add-player-form" class="flex gap-2 mb-6" onsubmit="event.preventDefault(); addPlayerHandler(this);">
+                <input type="text" id="player-name" placeholder="اسم اللاعب الجديد" required class="input-field flex-grow">
+                <button type="submit" class="btn-primary flex-shrink-0">إضافة</button>
+            </form>
+
+            <div id="team-list" class="space-y-3 max-h-96 overflow-y-auto">
+                <!-- قائمة اللاعبين تظهر هنا -->
+            </div>
+        </section>
+
+        <!-- 2. المباريات -->
+        <section class="lg:col-span-2">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <!-- 2.1 بدء مباراة جديدة -->
+                <div class="card p-6 h-fit">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-700">بدء مباراة جديدة</h2>
+                    <form id="start-match-form" onsubmit="event.preventDefault(); startMatchHandler(this);">
+                        <div class="mb-4">
+                            <label for="opponent-name" class="block text-sm font-medium text-gray-700 mb-1">اسم الفريق الخصم</label>
+                            <input type="text" id="opponent-name" placeholder="مثال: فريق الأبطال" required class="input-field">
+                        </div>
+                        <div class="mb-4">
+                            <label for="match-date" class="block text-sm font-medium text-gray-700 mb-1">تاريخ المباراة</label>
+                            <input type="date" id="match-date" required class="input-field">
+                        </div>
+                        <button type="submit" class="btn-primary w-full mt-2"><i class="fa-solid fa-futbol ml-2"></i> بدء المباراة</button>
+                    </form>
+                </div>
+
+                <!-- 2.2 سجل المباريات -->
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-700">سجل المباريات</h2>
+                    <div id="matches-list" class="space-y-3 max-h-96 overflow-y-auto">
+                        <!-- قائمة المباريات تظهر هنا -->
+                        <p id="no-matches-msg" class="text-center text-gray-500">لا توجد مباريات مسجلة بعد.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2.3 تفاصيل وإحصائيات المباراة النشطة -->
+            <div id="match-details-section" class="card p-6 mt-8 hidden">
+                <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-700">إحصائيات المباراة</h2>
+                <div id="match-info" class="mb-4">
+                    <!-- معلومات المباراة النشطة تظهر هنا -->
+                </div>
+
+                <form id="match-stats-form" onsubmit="event.preventDefault(); endMatchHandler(this);">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="teamGoals" class="block text-sm font-medium text-gray-700 mb-1">أهداف فريقنا</label>
+                            <input type="number" id="teamGoals" min="0" value="0" required class="input-field" disabled>
+                        </div>
+                        <div>
+                            <label for="opponentGoals" class="block text-sm font-medium text-gray-700 mb-1">أهداف الخصم</label>
+                            <input type="number" id="opponentGoals" min="0" value="0" required class="input-field">
+                        </div>
+                    </div>
+                    
+                    <h3 class="text-xl font-semibold mb-3 text-gray-700">إحصائيات اللاعبين</h3>
+                    <div id="player-stats-inputs" class="overflow-x-auto">
+                        <table class="w-full text-sm table-player-stats min-w-[500px]">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="p-2 text-right">اللاعب</th>
+                                    <th>الأهداف</th>
+                                    <th>التمريرات الحاسمة</th>
+                                    <th>التقييم (1-10)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- حقول إدخال إحصائيات اللاعبين تظهر هنا -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4">
+                        <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">ملاحظات حول المباراة</label>
+                        <textarea id="notes" rows="3" class="input-field"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="w-full mt-6 btn-primary bg-green-600 hover:bg-green-700">
+                        <i class="fa-solid fa-flag-checkered ml-2"></i> حفظ الإحصائيات وإنهاء المباراة
+                    </button>
+                </form>
+
+                <button onclick="deleteMatchHandler(activeMatchId)" class="w-full mt-3 btn-primary bg-red-600 hover:bg-red-700">
+                    <i class="fa-solid fa-trash-can ml-2"></i> حذف المباراة
+                </button>
+
+            </div>
+        </section>
+    </div>
+
+    <!-- 3. الجدول الإحصائي الإجمالي (يتم عرضه دائماً) -->
+    <section class="card p-6 mt-8">
+        <h2 class="text-2xl font-bold mb-4 border-b pb-2 text-indigo-700">الترتيب العام للاعبين</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm min-w-[600px]">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="p-2 text-right">المرتبة</th>
+                        <th class="text-right">الاسم</th>
+                        <th>التقييم العام</th>
+                        <th>المباريات الملعوبة</th>
+                        <th>الأهداف</th>
+                        <th>التمريرات الحاسمة</th>
+                        <th>معدل النقاط</th>
+                        <th>الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody id="ranking-table-body">
+                    <!-- الترتيب يظهر هنا -->
+                </tbody>
+            </table>
+        </div>
+    </section>
+    
+
+    <script type="module">
+    // --------------------------------------------------------------------------------------
+    // 1. Firebase Setup and Imports (Firestore & Auth)
+    // --------------------------------------------------------------------------------------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, runTransaction, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global variables provided by the environment
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+    let app, db, auth, userId = null;
+    let isAuthReady = false;
+
+    // Local Data Store (Data is synced from Firestore)
+    let players = [];
+    let matches = [];
+    let activeMatchId = localStorage.getItem('activeMatchId') || null;
+
+    // Firestore Path Constants
+    const COLLECTIONS = {
+        PLAYERS: 'team_elite_players',
+        MATCHES: 'team_elite_matches'
+    };
+
+    /**
+     * Helper to get the public collection reference (shared data for the team).
+     * Path: /artifacts/{appId}/public/data/{collectionName}
+     */
+    function getPublicCollectionRef(collectionName) {
+        if (!db) return null;
+        return collection(db, `artifacts/${appId}/public/data/${collectionName}`);
+    }
+    
+    // --------------------------------------------------------------------------------------
+    // 2. Utility Functions (Message Box, Firebase Setup, Data Loading)
+    // --------------------------------------------------------------------------------------
+
+    /**
+     * Replaces alert() and is used for UI messages.
+     */
+    function showMessage(text, type = 'success') {
+        const box = document.getElementById('message-box');
+        const content = document.getElementById('message-content');
+        const textElement = document.getElementById('message-text');
+
+        // Change color based on type
+        content.className = 'p-4 rounded-lg shadow-xl max-w-sm flex items-center justify-between transition-colors';
+        if (type === 'success') {
+            content.classList.add('bg-green-600', 'text-white');
+        } else if (type === 'error') {
+            content.classList.add('bg-red-600', 'text-white');
+        } else {
+            content.classList.add('bg-blue-600', 'text-white');
+        }
+        
+        textElement.textContent = text;
+        box.classList.remove('translate-x-full');
+        // Trigger a reflow to restart the transition
+        void box.offsetWidth; 
+        box.classList.add('translate-x-0'); // Slide in from the right
+
+        setTimeout(() => {
+            box.classList.remove('translate-x-0');
+            box.classList.add('translate-x-full'); // Slide out to the right
+        }, 4000);
+    }
+    
+    /**
+     * Initializes Firebase and sets up the authentication listener.
+     */
+    async function setupFirebase() {
+        if (Object.keys(firebaseConfig).length === 0) {
+            console.error("Firebase configuration is missing. Cannot initialize Firestore.");
+            showMessage('خطأ: لا يمكن الاتصال بقاعدة البيانات. إعدادات Firebase مفقودة.', 'error');
+            return;
+        }
+
+        app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+        setLogLevel('Debug'); // Enable debug logging for Firestore
+
+        // Authentication and Data Loading
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+            } else {
+                try {
+                    if (initialAuthToken) {
+                        const credentials = await signInWithCustomToken(auth, initialAuthToken);
+                        userId = credentials.user.uid;
+                    } else {
+                        const credentials = await signInAnonymously(auth);
+                        userId = credentials.user.uid;
+                    }
+                } catch (error) {
+                    console.error("Firebase Auth Error:", error);
+                    showMessage('خطأ في المصادقة: ' + error.message, 'error');
+                    userId = crypto.randomUUID(); // Fallback ID
+                }
+            }
+            isAuthReady = true;
+            console.log("Firebase initialized. User ID:", userId);
+
+            // Once authenticated, start real-time data listeners
+            loadData();
+        });
+    }
+
+    /**
+     * Sets up real-time listeners for players and matches.
+     */
+    function loadData() {
+        if (!isAuthReady || !db) return;
+
+        // 1. Listen to Players Collection
+        onSnapshot(getPublicCollectionRef(COLLECTIONS.PLAYERS), (snapshot) => {
+            players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Sort players: High-level players first (high rating, then high goals)
+            players.sort((a, b) => {
+                if (b.rating !== a.rating) return b.rating - a.rating;
+                return b.goals - a.goals;
+            });
+            console.log("Players updated from Firestore:", players);
+            renderTeam();
+            renderPlayerSelects();
+        }, (error) => {
+            console.error("Error listening to players:", error);
+            showMessage('خطأ في تحميل بيانات اللاعبين.', 'error');
+        });
+
+        // 2. Listen to Matches Collection
+        onSnapshot(getPublicCollectionRef(COLLECTIONS.MATCHES), (snapshot) => {
+            matches = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            matches.sort((a, b) => b.timestamp - a.timestamp); // Sort by newest first
+            console.log("Matches updated from Firestore:", matches);
+            
+            // Check if the previously active match is still valid
+            const activeMatch = matches.find(m => m.id === activeMatchId && !m.ended);
+            if (!activeMatch) {
+                activeMatchId = null;
+                localStorage.removeItem('activeMatchId');
+            }
+            
+            renderMatches();
+            renderMatchDetails(activeMatchId);
+        }, (error) => {
+            console.error("Error listening to matches:", error);
+            showMessage('خطأ في تحميل بيانات المباريات.', 'error');
+        });
+    }
+
+    // --------------------------------------------------------------------------------------
+    // 3. Data Modification Functions (Using Firestore)
+    // --------------------------------------------------------------------------------------
+    
+    /**
+     * Handles adding a new player to the Firestore database.
+     */
+    async function addPlayer(name) {
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (!name.trim()) return showMessage('يرجى إدخال اسم اللاعب.', 'error');
+        
+        try {
+            const newPlayer = {
+                name: name,
+                rating: 5, // تقييم مبدئي
+                goals: 0,
+                assists: 0,
+                matchesPlayed: 0, // لتسهيل حساب المتوسط في Firestore
+                timestamp: Date.now()
+            };
+            await addDoc(getPublicCollectionRef(COLLECTIONS.PLAYERS), newPlayer);
+            showMessage('تم إضافة اللاعب بنجاح.', 'success');
+        } catch (error) {
+            console.error("Error adding player:", error);
+            showMessage('خطأ في إضافة اللاعب: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Handles removing a player from the Firestore database.
+     */
+    async function removePlayer(playerId) {
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (!playerId) return; 
+
+        // NOTE: A proper UI confirmation modal should be implemented here before calling this function.
+
+        try {
+            const playerRef = doc(getPublicCollectionRef(COLLECTIONS.PLAYERS), playerId);
+            await deleteDoc(playerRef);
+            showMessage('تم حذف اللاعب بنجاح.', 'success');
+        } catch (error) {
+            console.error("Error removing player:", error);
+            showMessage('خطأ في حذف اللاعب: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Creates a new match document in Firestore.
+     */
+    async function startMatch(opponent, date) {
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        if (activeMatchId) return showMessage('هناك مباراة نشطة بالفعل. يجب إنهاؤها أولاً.', 'error');
+
+        try {
+            const newMatch = {
+                opponent: opponent,
+                date: date,
+                goals: 0,
+                opponentGoals: 0,
+                ended: false,
+                notes: '',
+                timestamp: Date.now(),
+                // Store player stats skeleton for current players
+                stats: players.map(p => ({ playerId: p.id, goals: 0, assists: 0, rating: 5 })) 
+            };
+            const docRef = await addDoc(getPublicCollectionRef(COLLECTIONS.MATCHES), newMatch);
+            activeMatchId = docRef.id;
+            localStorage.setItem('activeMatchId', activeMatchId);
+            
+            showMessage('تم بدء مباراة جديدة بنجاح.', 'success');
+            // UI updates are handled by onSnapshot
+        } catch (error) {
+            console.error("Error starting match:", error);
+            showMessage('خطأ في بدء المباراة: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Updates the match document and player aggregate stats using a Firestore transaction.
+     */
+    async function endMatch(matchId, form) {
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        const match = matches.find(m => m.id === matchId);
+        if (!match) return showMessage('المباراة غير موجودة.', 'error');
+        if (match.ended) return showMessage('هذه المباراة منتهية بالفعل. يمكنك حذفها وإعادة إضافتها لتحديث الإحصائيات.', 'error');
+
+
+        const teamGoals = parseInt(form.elements['teamGoals'].value, 10);
+        const opponentGoals = parseInt(form.elements['opponentGoals'].value, 10);
+        const notes = form.elements['notes'].value;
+        
+        // 1. Prepare new match stats (newStats)
+        const newStats = [];
+        let allValid = true;
+        for (const player of players) {
+            const goals = parseInt(form.elements[`goals-${player.id}`]?.value || 0, 10);
+            const assists = parseInt(form.elements[`assists-${player.id}`]?.value || 0, 10);
+            const rating = parseFloat(form.elements[`rating-${player.id}`]?.value);
+            
+            if (isNaN(rating) || rating < 1 || rating > 10) {
+                 showMessage(`خطأ في تقييم اللاعب ${player.name}. يجب أن يكون بين 1 و 10.`, 'error');
+                 allValid = false;
+                 break;
+            }
+
+            newStats.push({
+                playerId: player.id,
+                goals: goals,
+                assists: assists,
+                rating: rating
+            });
+        }
+
+        if (!allValid) return;
+
+        try {
+            await runTransaction(db, async (transaction) => {
+                const matchRef = doc(getPublicCollectionRef(COLLECTIONS.MATCHES), matchId);
+                
+                // 1. Update Match Document (FIRST)
+                transaction.update(matchRef, {
+                    ended: true,
+                    goals: teamGoals,
+                    opponentGoals: opponentGoals,
+                    notes: notes,
+                    stats: newStats,
+                    timestamp: Date.now() 
+                });
+
+                // 2. Update Player Aggregate Stats (SECOND)
+                for (const stats of newStats) {
+                    const playerRef = doc(getPublicCollectionRef(COLLECTIONS.PLAYERS), stats.playerId);
+                    const playerDoc = await transaction.get(playerRef);
+                    
+                    if (playerDoc.exists()) {
+                        const player = playerDoc.data();
+                        
+                        // New Aggregate Calculation
+                        const currentMatches = player.matchesPlayed || 0;
+                        const totalRatingSum = (player.rating * currentMatches) + stats.rating;
+                        const totalMatches = currentMatches + 1;
+                        
+                        transaction.update(playerRef, {
+                            goals: (player.goals || 0) + stats.goals,
+                            assists: (player.assists || 0) + stats.assists,
+                            matchesPlayed: totalMatches,
+                            rating: totalRatingSum / totalMatches, // New average rating
+                        });
+                    }
+                }
+            });
+            
+            activeMatchId = null;
+            localStorage.removeItem('activeMatchId');
+            showMessage('تم حفظ الإحصائيات وإنهاء المباراة بنجاح.', 'success');
+            document.getElementById('match-stats-form').classList.add('hidden');
+        } catch (error) {
+            console.error("Transaction failed:", error);
+            showMessage('خطأ في حفظ البيانات: ' + error.message, 'error');
+        }
+    }
+
+    /**
+     * Deletes a match and reverses player aggregate stats if the match was ended.
+     */
+    async function deleteMatch(matchId) {
+        if (!db) return showMessage('لا يوجد اتصال بقاعدة البيانات.', 'error');
+        const match = matches.find(m => m.id === matchId);
+        if (!match) return;
+
+        // NOTE: Implement a proper confirmation modal in the UI. For now, this is a direct action.
+        
+        try {
+            await runTransaction(db, async (transaction) => {
+                const matchRef = doc(getPublicCollectionRef(COLLECTIONS.MATCHES), matchId);
+                
+                // 1. Delete the match document
+                transaction.delete(matchRef);
+                
+                // 2. Undo player stats if the match was ended
+                if (match.ended && match.stats && match.stats.length > 0) {
+                    for (const stats of match.stats) {
+                        const playerRef = doc(getPublicCollectionRef(COLLECTIONS.PLAYERS), stats.playerId);
+                        const playerDoc = await transaction.get(playerRef);
+                        
+                        if (playerDoc.exists()) {
+                            const player = playerDoc.data();
+                            
+                            const oldRatingSum = (player.rating * player.matchesPlayed) || 0;
+                            const newMatchesCount = (player.matchesPlayed || 0) - 1;
+                            
+                            // New aggregate sum after removing this match's rating
+                            const newRatingSum = oldRatingSum - stats.rating;
+                            
+                            transaction.update(playerRef, {
+                                goals: Math.max(0, (player.goals || 0) - stats.goals), 
+                                assists: Math.max(0, (player.assists || 0) - stats.assists),
+                                matchesPlayed: newMatchesCount,
+                                // New average: handle division by zero if it was the only match
+                                rating: newMatchesCount > 0 ? (newRatingSum / newMatchesCount) : 5, 
+                            });
+                        }
+                    }
+                     showMessage('تم حذف المباراة والتراجع عن إحصائيات اللاعبين بنجاح.', 'success');
+                } else {
+                     showMessage('تم حذف المباراة بنجاح.', 'success');
+                }
+            });
+
+            if (activeMatchId === matchId) {
+                activeMatchId = null;
+                localStorage.removeItem('activeMatchId');
+                document.getElementById('match-details-section').classList.add('hidden');
+            }
+        } catch (error) {
+            console.error("Transaction failed during match deletion:", error);
+            showMessage('خطأ في حذف المباراة: ' + error.message, 'error');
+        }
+    }
+    
+    // --------------------------------------------------------------------------------------
+    // 4. UI Rendering and Event Handlers (Modified to use real-time data)
+    // --------------------------------------------------------------------------------------
+
+    function renderTeam() {
+        const teamList = document.getElementById('team-list');
+        const rankingTableBody = document.getElementById('ranking-table-body');
+        
+        teamList.innerHTML = '';
+        rankingTableBody.innerHTML = '';
+
+        if (players.length === 0) {
+            teamList.innerHTML = '<p class="text-center text-gray-500 p-4">لا يوجد لاعبون مسجلون.</p>';
+        }
+
+        players.forEach((player, index) => {
+            // Player List Card
+            const listItem = document.createElement('div');
+            listItem.className = 'flex items-center justify-between p-3 bg-white rounded-lg shadow-sm border border-gray-200';
+            listItem.innerHTML = `
+                <div class="flex items-center">
+                    <span class="text-gray-900 font-semibold text-right">${player.name}</span>
+                    <span class="text-xs text-gray-500 mr-2">(${player.matchesPlayed || 0} مباريات)</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-yellow-500 font-bold ml-2">${(player.rating || 5).toFixed(1)} <i class="fa-solid fa-star"></i></span>
+                    <button onclick="removePlayerHandler('${player.id}', '${player.name}')" class="text-red-500 hover:text-red-700 p-1 rounded-full transition duration-150" title="حذف اللاعب">
+                        <i class="fa-solid fa-user-minus"></i>
+                    </button>
+                </div>
+            `;
+            teamList.appendChild(listItem);
+
+            // Ranking Table Row
+            const rankRow = document.createElement('tr');
+            rankRow.className = 'border-b hover:bg-gray-50';
+            const totalPoints = (player.rating * (player.matchesPlayed || 0)) + (player.goals * 3) + (player.assists * 2);
+            rankRow.innerHTML = `
+                <td class="p-2 text-center text-lg font-bold text-indigo-700">${index + 1}</td>
+                <td class="p-2 text-right font-semibold">${player.name}</td>
+                <td class="p-2 text-center text-yellow-600 font-medium">${(player.rating || 5).toFixed(1)}</td>
+                <td class="p-2 text-center">${player.matchesPlayed || 0}</td>
+                <td class="p-2 text-center text-green-600 font-medium">${player.goals}</td>
+                <td class="p-2 text-center text-blue-600 font-medium">${player.assists}</td>
+                <td class="p-2 text-center font-bold text-gray-800">${totalPoints.toFixed(0)}</td>
+                <td class="p-2 text-center">
+                     <button onclick="removePlayerHandler('${player.id}', '${player.name}')" class="text-red-500 hover:text-red-700 p-1 rounded-full" title="حذف اللاعب">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </td>
+            `;
+            rankingTableBody.appendChild(rankRow);
+        });
+    }
+
+    function renderMatches() {
+        const matchesList = document.getElementById('matches-list');
+        matchesList.innerHTML = '';
+        
+        const noMatchesMsg = document.getElementById('no-matches-msg');
+        if (matches.length > 0) {
+            noMatchesMsg.classList.add('hidden');
+        } else {
+            noMatchesMsg.classList.remove('hidden');
+        }
+
+        matches.forEach(match => {
+            const listItem = document.createElement('div');
+            const statusClass = match.ended ? (match.goals > match.opponentGoals ? 'bg-green-100 border-green-400' : match.goals < match.opponentGoals ? 'bg-red-100 border-red-400' : 'bg-yellow-100 border-yellow-400') : 'bg-gray-100 border-gray-400';
+            const statusText = match.ended ? `النتيجة: ${match.goals} - ${match.opponentGoals}` : 'نشطة';
+
+            listItem.className = `p-3 border-r-4 rounded-lg shadow-sm ${statusClass} flex items-center justify-between transition duration-150 cursor-pointer hover:shadow-md`;
+            listItem.onclick = () => activateMatch(match.id);
+            listItem.innerHTML = `
+                <div class="flex flex-col text-right">
+                    <span class="font-semibold text-gray-800">${match.opponent}</span>
+                    <span class="text-xs text-gray-600">${match.date}</span>
+                </div>
+                <div class="text-left">
+                    <span class="font-bold text-sm">${statusText}</span>
+                </div>
+            `;
+            matchesList.appendChild(listItem);
+        });
+    }
+
+    function renderMatchDetails(matchId) {
+        const detailsSection = document.getElementById('match-details-section');
+        const matchInfoDiv = document.getElementById('match-info');
+        const statsTableBody = document.querySelector('#player-stats-inputs tbody');
+        const statsForm = document.getElementById('match-stats-form');
+        const teamGoalsInput = document.getElementById('teamGoals');
+
+        detailsSection.classList.add('hidden');
+        statsTableBody.innerHTML = '';
+        teamGoalsInput.disabled = false; // Enable goals input for the active match
+
+        const match = matches.find(m => m.id === matchId);
+        
+        if (!match) {
+            matchInfoDiv.innerHTML = '<p class="text-center text-gray-500">لا توجد مباراة نشطة.</p>';
+            return;
+        }
+
+        activeMatchId = matchId;
+        detailsSection.classList.remove('hidden');
+
+        matchInfoDiv.innerHTML = `
+            <p class="text-xl font-bold mb-2">المباراة ضد: <span class="text-indigo-700">${match.opponent}</span></p>
+            <p class="text-md text-gray-600">التاريخ: ${match.date}</p>
+        `;
+
+        // Populate Match Stats Form
+        document.getElementById('opponentGoals').value = match.opponentGoals || 0;
+        document.getElementById('notes').value = match.notes || '';
+        document.getElementById('teamGoals').value = match.goals || 0;
+
+        // Populate Player Stats Inputs
+        let goalsSum = 0;
+        match.stats.forEach(matchStat => {
+            const player = players.find(p => p.id === matchStat.playerId);
+            if (!player) return; // Skip if player no longer exists
+
+            const row = document.createElement('tr');
+            row.className = 'border-b';
+            row.innerHTML = `
+                <td class="p-2 text-right font-medium">${player.name}</td>
+                <td class="p-2"><input type="number" id="goals-${player.id}" min="0" value="${matchStat.goals || 0}" class="input-field text-center player-goals" oninput="updateTeamGoals()"></td>
+                <td class="p-2"><input type="number" id="assists-${player.id}" min="0" value="${matchStat.assists || 0}" class="input-field text-center"></td>
+                <td class="p-2"><input type="number" id="rating-${player.id}" min="1" max="10" step="0.1" value="${matchStat.rating || 5}" required class="input-field text-center"></td>
+            `;
+            statsTableBody.appendChild(row);
+
+            goalsSum += matchStat.goals || 0;
+        });
+
+        // Match status handling
+        if (match.ended) {
+            statsForm.classList.add('hidden');
+            matchInfoDiv.innerHTML += `<p class="mt-2 text-lg font-bold text-green-600">انتهت المباراة! النتيجة النهائية: ${match.goals} - ${match.opponentGoals}</p>`;
+            // Show recorded goals in the disabled input
+            teamGoalsInput.value = match.goals; 
+        } else {
+            statsForm.classList.remove('hidden');
+            // Update the team goals input initially based on player goals
+            teamGoalsInput.value = goalsSum;
+        }
+    }
+
+    // Helper to keep team goals updated in the UI
+    window.updateTeamGoals = function() {
+        const goalInputs = document.querySelectorAll('.player-goals');
+        let totalGoals = 0;
+        goalInputs.forEach(input => {
+            totalGoals += parseInt(input.value) || 0;
+        });
+        document.getElementById('teamGoals').value = totalGoals;
+    }
+
+    function renderPlayerSelects() {
+        // (No longer needed as Select2 is not used for this simple app)
+    }
+
+    // --------------------------------------------------------------------------------------
+    // 5. Global Handlers for HTML Forms
+    // --------------------------------------------------------------------------------------
+
+    window.addPlayerHandler = (form) => {
+        const name = form.elements['player-name'].value.trim();
+        addPlayer(name);
+        form.reset();
+    };
+
+    window.removePlayerHandler = (playerId, playerName) => {
+        // Simple confirmation using the message box as a placeholder for a proper modal
+        if (window.confirm(`هل أنت متأكد من حذف اللاعب ${playerName}؟ سيتم حذف جميع إحصائياته في المباريات المستقبلية.`)) {
+            removePlayer(playerId);
+        }
+    };
+
+    window.startMatchHandler = (form) => {
+        const opponent = form.elements['opponent-name'].value.trim();
+        const date = form.elements['match-date'].value;
+        startMatch(opponent, date);
+        form.reset();
+    };
+
+    window.endMatchHandler = (form) => {
+        if (!activeMatchId) {
+            showMessage('لا توجد مباراة نشطة لإنهاءها.', 'error');
+            return;
+        }
+        endMatch(activeMatchId, form);
+    };
+
+    window.activateMatch = (matchId) => {
+        activeMatchId = matchId;
+        localStorage.setItem('activeMatchId', activeMatchId);
+        renderMatchDetails(activeMatchId);
+    };
+    
+    window.deleteMatchHandler = (matchId) => {
+        if (window.confirm('هل أنت متأكد من حذف هذه المباراة؟ سيتم التراجع عن إحصائيات اللاعبين في حال كانت المباراة منتهية.')) {
+            deleteMatch(matchId);
+        }
+    }
+
+    // --------------------------------------------------------------------------------------
+    // 6. Initial Load
+    // --------------------------------------------------------------------------------------
+
+    window.onload = function() {
+        // Start the Firebase setup and authentication process
+        setupFirebase();
+    }
+    </script>
+</body>
+</html>
